@@ -1,0 +1,34 @@
+name: Benchmarks
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  benchmark:
+    name: Run Benchmarks
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libnetcdf-dev libhdf5-dev
+
+    - name: Run benchmarks
+      run: |
+        # Add cargo bench when benchmarks are implemented
+        echo "Benchmarks will be run here"
+        # cargo bench --no-fail-fast
+
+    - name: Comment benchmark results
+      if: github.event_name == 'pull_request'
+      run: |
+        echo "Benchmark results would be posted as PR comment"

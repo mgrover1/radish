@@ -1,0 +1,21 @@
+[package]
+name = "radish"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+radish-types = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+ndarray = { workspace = true }
+chrono = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+hdf5 = { workspace = true }
+netcdf = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3.8"

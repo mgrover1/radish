@@ -1,0 +1,21 @@
+[package]
+name = "radish-python"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+name = "_radish"
+crate-type = ["cdylib"]
+
+[dependencies]
+radish = { workspace = true }
+radish-types = { workspace = true }
+pyo3 = { workspace = true }
+numpy = { workspace = true }
+ndarray = { workspace = true }
+
+[build-dependencies]
+pyo3-build-config = "0.22"

@@ -1,0 +1,70 @@
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "radish"
+version = "0.1.0"
+description = "High-performance weather radar data library with Rust core"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT OR Apache-2.0" }
+authors = [
+    { name = "Maxwell Grover", email = "maxwell.grover@anl.gov" }
+]
+keywords = ["radar", "weather", "cfradial", "meteorology", "netcdf"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Atmospheric Science",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Rust",
+]
+
+dependencies = [
+    "numpy>=1.20",
+]
+
+[project.optional-dependencies]
+xarray = [
+    "xarray>=2023.1.0",
+    "datatree>=0.0.12",
+]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "black>=23.0",
+    "ruff>=0.1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/mgrover1/radish"
+Documentation = "https://radish.readthedocs.io"
+Repository = "https://github.com/mgrover1/radish"
+Issues = "https://github.com/mgrover1/radish/issues"
+
+[project.entry-points."xarray.backends"]
+radish = "radish.backends.xarray_backend:RadishBackendEntrypoint"
+
+[tool.maturin]
+module-name = "radish._radish"
+python-source = "python"
+features = ["pyo3/extension-module"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.black]
+line-length = 100
+target-version = ["py39", "py310", "py311", "py312"]

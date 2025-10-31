@@ -1,0 +1,47 @@
+name: Documentation
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  rust-docs:
+    name: Build Rust Documentation
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libnetcdf-dev libhdf5-dev
+
+    - name: Build documentation
+      run: cargo doc --no-deps --all-features
+
+    - name: Upload documentation
+      uses: actions/upload-artifact@v4
+      with:
+        name: rust-docs
+        path: target/doc/
+
+  check-links:
+    name: Check Documentation Links
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Check markdown links
+      uses: gaurav-nelson/github-action-markdown-link-check@v1
+      with:
+        use-quiet-mode: 'yes'
+        config-file: '.github/markdown-link-check-config.json'
+        folder-path: '.'
+        file-extension: '.md'
