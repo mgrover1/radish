@@ -18,4 +18,4 @@ numpy = { workspace = true }
 ndarray = { workspace = true }
 
 [build-dependencies]
-pyo3-build-config = "0.22"
+pyo3-build-config = "0.27"
