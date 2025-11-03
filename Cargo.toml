@@ -19,11 +19,11 @@ radish = { path = "radish" }
 radish-types = { path = "types" }
 
 # Error handling
-thiserror = "1.0"
+thiserror = "2.0"
 anyhow = "1.0"
 
 # Data structures
-ndarray = "0.16"
+ndarray = "0.17"
 chrono = { version = "0.4", features = ["serde"] }
 
 # Serialization
