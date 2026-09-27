@@ -39,6 +39,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to the `brew --prefix` form for #1 (previously hardcoded to
   `/opt/homebrew`, which is Apple Silicon-only).
 
+- **`Test (ubuntu-latest, stable)` (Rust CI) failing to compile with
+  `using chunks_exact with a constant chunk size`.** `stable` is a
+  rolling toolchain and Rust's clippy added the
+  `chunks_exact_to_as_chunks` lint (as of clippy for 1.98), which turns
+  into a hard `-D warnings` error on any branch the next time CI runs
+  against a stable release that has it — unrelated to this PR's changes,
+  but it cancelled the macOS Rust job via the matrix's fail-fast before
+  it could confirm the HDF5 fix above. Rewrote the one call site
+  (`radish/src/backends/nexrad_level3/decode/xdr.rs`) to
+  `as_chunks::<4>().0.iter()` as clippy suggests; verified against the
+  same toolchain version CI uses (`rustup update stable` → 1.98.1)
+  with `cargo fmt --check`, `build`, `test` (460 passed), and `clippy
+  --all-features -D warnings` all clean.
+
 ## [0.4.0] - 2026-08-11
 
 The "NEXRAD Level 3, fully decoded" release. All 7 previously-unsupported NIDS message codes (170/172-177 — digital precip accumulation, instantaneous rate, and hydrometeor classification) now decode, closing out the last gap in packet-16/AF1F/packet-28 coverage. Also extends `TILT_LETTER_TABLE` for SRMV/HCLASS/WRADH, adds real `wasm-bindgen-test` coverage for the `radish-wasm` crate (previously untested), and widens `MomentData` with an additive `raw_codes_u16` field for packet 28's wider codes. (#46, #47)

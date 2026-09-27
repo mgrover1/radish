@@ -144,8 +144,10 @@ impl<'a> XdrCursor<'a> {
         let byte_len = len as usize * 4;
         let bytes = self.take("int array body", byte_len)?;
         Ok(bytes
-            .chunks_exact(4)
-            .map(|c| i32::from_be_bytes([c[0], c[1], c[2], c[3]]))
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|c| i32::from_be_bytes(*c))
             .collect())
     }
 
