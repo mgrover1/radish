@@ -67,7 +67,7 @@ ruff check radish/
 NetCDF and HDF5 libraries are required:
 - **Ubuntu/Debian**: `sudo apt-get install libnetcdf-dev libhdf5-dev`
 - **macOS**: `brew install netcdf hdf5`
-- **Environment variables** (if needed): `export NETCDF_DIR=/opt/homebrew` and `export HDF5_DIR=/opt/homebrew`
+- **Environment variables** (if needed): `export HDF5_DIR=$(brew --prefix hdf5)` and `export NETCDF_DIR=$(brew --prefix netcdf)` (use `brew --prefix`, not a hardcoded `/opt/homebrew` — that's Apple Silicon-only and breaks on Intel Macs or when the formula's keg path changes)
 
 ## Architecture
 

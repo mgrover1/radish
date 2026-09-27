@@ -33,8 +33,11 @@ serde_json = "1.0"
 
 # File I/O. We use the maintained `hdf5-metno` fork because the original `hdf5`
 # crate is stuck at 0.8 and does not recognise HDF5 ≥ 1.14 (Ubuntu 25.04 ships
-# 1.14.5). `netcdf` 0.12 internally pulls a compatible `hdf5-sys`.
-hdf5 = { package = "hdf5-metno", version = "0.12" }
+# 1.14.5). 0.12.x pairs with hdf5-metno-sys 0.11.x, whose H5_VERSION parser
+# doesn't recognise HDF5 2.x (Homebrew's `hdf5` formula default as of
+# 2026-09); 0.15 pairs with hdf5-metno-sys 0.12.x, which adds that support.
+# `netcdf` 0.12 internally pulls a compatible `hdf5-sys`.
+hdf5 = { package = "hdf5-metno", version = "0.15" }
 netcdf = "0.12"
 
 # NEXRAD Level 2 backend — `nexrad` and `nexrad-model` are dev-only

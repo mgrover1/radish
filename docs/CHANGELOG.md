@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **macOS CI (`Test (macos-latest, stable)`, `Test Python 3.12/3.13 on
+  macos-latest`) failing with `Unable to locate HDF5 root directory
+  and/or headers`, then `Invalid H5_VERSION: "2.2.0"` once that was
+  fixed.** Two stacked problems, both from Homebrew's `hdf5` formula
+  moving to an unversioned HDF5 2.2.0 release:
+  1. `hdf5-metno-sys`'s Homebrew autodetection only recognizes specific
+     versioned formula names (`hdf5@1.14`, `hdf5@2.0`, ...) and never
+     finds a plain `hdf5` keg — fixed by exporting
+     `HDF5_DIR`/`NETCDF_DIR`/`PKG_CONFIG_PATH` via `brew --prefix` after
+     `brew install` in `rust-ci.yml`/`python-ci.yml`, matching the
+     pattern `release.yml` already used for macOS wheel builds.
+  2. Once `HDF5_DIR` was found, `hdf5-metno-sys` 0.11.3's version parser
+     didn't recognize HDF5 2.2.0 at all and panicked. `hdf5-metno`
+     0.12.x pins `hdf5-metno-sys = "^0.11.3"`; HDF5 2.x support only
+     landed in `hdf5-metno-sys` 0.12.x, which pairs with `hdf5-metno`
+     0.15.0. Bumped the workspace's `hdf5` dependency (`package =
+     "hdf5-metno"`) from `"0.12"` to `"0.15"` to pick it up. radish's
+     only use of the crate is the `hdf5::Error` conversion in
+     `error.rs`, so this is a `Cargo.lock`-only-shaped change with no
+     source changes needed; verified with `cargo build`/`test`/`clippy`
+     (460 tests pass) plus a runtime smoke test that creates, writes,
+     and reads back a real `.h5` file through the new version. Also
+     incidentally drops the unmaintained `paste` crate (replaced by
+     `pastey`), clearing one of the four pre-existing `cargo audit`
+     warnings.
+
+  `README.md`, `CLAUDE.md`, and `docs/GETTING_STARTED.md` are updated
+  to the `brew --prefix` form for #1 (previously hardcoded to
+  `/opt/homebrew`, which is Apple Silicon-only).
+
+- **`Test (ubuntu-latest, stable)` (Rust CI) failing to compile with
+  `using chunks_exact with a constant chunk size`.** `stable` is a
+  rolling toolchain and Rust's clippy added the
+  `chunks_exact_to_as_chunks` lint (as of clippy for 1.98), which turns
+  into a hard `-D warnings` error on any branch the next time CI runs
+  against a stable release that has it — unrelated to this PR's changes,
+  but it cancelled the macOS Rust job via the matrix's fail-fast before
+  it could confirm the HDF5 fix above. Rewrote the one call site
+  (`radish/src/backends/nexrad_level3/decode/xdr.rs`) to
+  `as_chunks::<4>().0.iter()` as clippy suggests; verified against the
+  same toolchain version CI uses (`rustup update stable` → 1.98.1)
+  with `cargo fmt --check`, `build`, `test` (460 passed), and `clippy
+  --all-features -D warnings` all clean.
+
 ## [0.4.0] - 2026-08-11
 
 The "NEXRAD Level 3, fully decoded" release. All 7 previously-unsupported NIDS message codes (170/172-177 — digital precip accumulation, instantaneous rate, and hydrometeor classification) now decode, closing out the last gap in packet-16/AF1F/packet-28 coverage. Also extends `TILT_LETTER_TABLE` for SRMV/HCLASS/WRADH, adds real `wasm-bindgen-test` coverage for the `radish-wasm` crate (previously untested), and widens `MomentData` with an additive `raw_codes_u16` field for packet 28's wider codes. (#46, #47)

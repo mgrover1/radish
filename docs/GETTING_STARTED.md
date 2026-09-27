@@ -343,12 +343,14 @@ span, so if you want *every* moment you're better off with
 
 **NetCDF/HDF5 not found:**
 ```bash
-# Set library paths (macOS with Homebrew)
-export NETCDF_DIR=/opt/homebrew
-export HDF5_DIR=/opt/homebrew
+# Set library paths (macOS with Homebrew) — use `brew --prefix`, not a
+# hardcoded /opt/homebrew, so this works on both Apple Silicon and Intel
+# Macs and stays correct if the formula's keg path ever changes.
+export NETCDF_DIR=$(brew --prefix netcdf)
+export HDF5_DIR=$(brew --prefix hdf5)
 
 # Or use pkg-config
-export PKG_CONFIG_PATH=/opt/homebrew/lib/pkgconfig
+export PKG_CONFIG_PATH=$(brew --prefix hdf5)/lib/pkgconfig:$(brew --prefix netcdf)/lib/pkgconfig
 ```
 
 **Rust toolchain issues:**
