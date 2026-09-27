@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **macOS CI (`Test (macos-latest, stable)`, `Test Python 3.12/3.13 on
+  macos-latest`) failing with `Unable to locate HDF5 root directory
+  and/or headers`.** Homebrew's `hdf5` formula now installs an
+  unversioned release; `hdf5-metno-sys`'s Homebrew autodetection only
+  recognizes specific versioned formula names (`hdf5@1.14`, `hdf5@2.0`,
+  ...) and never finds a plain `hdf5` keg. `rust-ci.yml` and
+  `python-ci.yml` now export `HDF5_DIR`/`NETCDF_DIR`/`PKG_CONFIG_PATH`
+  via `brew --prefix` after `brew install`, matching the pattern
+  `release.yml` already used for macOS wheel builds — this bypasses the
+  crate's Homebrew probing entirely. `README.md`, `CLAUDE.md`, and
+  `docs/GETTING_STARTED.md` are updated to the same `brew --prefix` form
+  (previously hardcoded to `/opt/homebrew`, which is Apple
+  Silicon-only).
+
 ## [0.4.0] - 2026-08-11
 
 The "NEXRAD Level 3, fully decoded" release. All 7 previously-unsupported NIDS message codes (170/172-177 — digital precip accumulation, instantaneous rate, and hydrometeor classification) now decode, closing out the last gap in packet-16/AF1F/packet-28 coverage. Also extends `TILT_LETTER_TABLE` for SRMV/HCLASS/WRADH, adds real `wasm-bindgen-test` coverage for the `radish-wasm` crate (previously untested), and widens `MomentData` with an additive `raw_codes_u16` field for packet 28's wider codes. (#46, #47)
