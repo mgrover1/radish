@@ -53,6 +53,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with `cargo fmt --check`, `build`, `test` (460 passed), and `clippy
   --all-features -D warnings` all clean.
 
+### Security
+
+- **`Security Audit` CI job failing on a real advisory.** `rustls`
+  0.23.40 is pulled in only via `[dev-dependencies]` (the dev-only
+  `nexrad` → `nexrad-data` → `reqwest` → `hyper-rustls`/`tokio-rustls`/
+  `rustls-platform-verifier` → `rustls` chain), never in a production
+  build, but `cargo audit` still scans the full `Cargo.lock`.
+
+  | Advisory | Crate | Resolution |
+  | --- | --- | --- |
+  | RUSTSEC-2026-0285 | rustls 0.23.40 | `cargo update -p rustls --precise 0.23.45` |
+
+  `cargo update` also pulled `aws-lc-rs`/`aws-lc-sys`/`rustls-webpki`
+  forward in lockstep (they share rustls's crypto-provider version
+  requirements) — expected, no `Cargo.toml` changes needed anywhere in
+  the workspace. `cargo audit` now exits 0 (3 pre-existing allowed
+  warnings remain: `proc-macro-error2` unmaintained, `anyhow` unsound
+  note, `chacha20` yanked — none of them fail the job).
+
 ## [0.4.0] - 2026-08-11
 
 The "NEXRAD Level 3, fully decoded" release. All 7 previously-unsupported NIDS message codes (170/172-177 — digital precip accumulation, instantaneous rate, and hydrometeor classification) now decode, closing out the last gap in packet-16/AF1F/packet-28 coverage. Also extends `TILT_LETTER_TABLE` for SRMV/HCLASS/WRADH, adds real `wasm-bindgen-test` coverage for the `radish-wasm` crate (previously untested), and widens `MomentData` with an additive `raw_codes_u16` field for packet 28's wider codes. (#46, #47)
