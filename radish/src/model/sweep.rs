@@ -1,10 +1,10 @@
-/// Sweep-level data structures
+//! Sweep-level data structures.
 
+use radish_types::{FollowMode, PrtMode, SweepMode};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use radish_types::{SweepMode, FollowMode, PrtMode};
 
-use super::{MomentData, Coordinates};
+use super::{Coordinates, MomentData, NexradSweepAttrs, NidsSweepAttrs, SigmetSweepAttrs};
 
 /// Sweep data containing moments and coordinates
 #[derive(Debug, Clone)]
@@ -48,7 +48,8 @@ impl SweepData {
 
     /// Filter moments to keep only specified names
     pub fn filter_moments(&mut self, moment_names: &[&str]) {
-        self.moments.retain(|k, _| moment_names.contains(&k.as_str()));
+        self.moments
+            .retain(|k, _| moment_names.contains(&k.as_str()));
     }
 
     /// Number of rays in this sweep
@@ -100,6 +101,28 @@ pub struct SweepMetadata {
 
     /// Unambiguous range (m)
     pub unambiguous_range: Option<f64>,
+
+    /// NEXRAD-specific sweep attrs (MSG_5 elevation cut). `None` for non-NEXRAD sweeps.
+    pub nexrad: Option<NexradSweepAttrs>,
+
+    /// Sigmet/IRIS-specific sweep attrs. `None` for non-Sigmet sweeps.
+    pub sigmet: Option<SigmetSweepAttrs>,
+
+    /// NEXRAD Level 3 (NIDS)-specific sweep attrs. `None` for non-NIDS
+    /// sweeps.
+    #[serde(default)]
+    pub nids: Option<NidsSweepAttrs>,
+
+    /// `false` when the sweep's data is provably partial — e.g. a
+    /// NEXRAD volume truncated mid-sweep (real-time chunk streams,
+    /// plan 0009). Formats without partial-volume semantics always
+    /// report `true`.
+    #[serde(default = "default_true")]
+    pub is_complete: bool,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 impl SweepMetadata {
@@ -118,6 +141,10 @@ impl SweepMetadata {
             prf: None,
             nyquist_velocity: None,
             unambiguous_range: None,
+            nexrad: None,
+            sigmet: None,
+            nids: None,
+            is_complete: true,
         }
     }
 }

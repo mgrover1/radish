@@ -13,13 +13,25 @@ fn main() {
     match netcdf::open(filename) {
         Ok(file) => {
             println!("Successfully opened file!");
-            println!("Dimensions: {:?}", file.dimensions().map(|d| d.name()).collect::<Vec<_>>());
-            println!("Variables: {}", file.variables().map(|v| v.name()).collect::<Vec<_>>().len());
+            println!(
+                "Dimensions: {:?}",
+                file.dimensions().map(|d| d.name()).collect::<Vec<_>>()
+            );
+            println!(
+                "Variables: {}",
+                file.variables().map(|v| v.name()).collect::<Vec<_>>().len()
+            );
 
             // Test reading time_coverage_start
             if let Some(var) = file.variable("time_coverage_start") {
                 println!("\ntime_coverage_start variable found!");
-                println!("  Dimensions: {:?}", var.dimensions().iter().map(|d| (d.name(), d.len())).collect::<Vec<_>>());
+                println!(
+                    "  Dimensions: {:?}",
+                    var.dimensions()
+                        .iter()
+                        .map(|d| (d.name(), d.len()))
+                        .collect::<Vec<_>>()
+                );
 
                 // Try get_string
                 match var.get_string(()) {
@@ -42,7 +54,8 @@ fn main() {
                 match var.get::<i8, _>(..) {
                     Ok(data) => {
                         println!("  get::<i8> succeeded, shape: {:?}", data.shape());
-                        let bytes: Vec<u8> = data.into_iter()
+                        let bytes: Vec<u8> = data
+                            .into_iter()
                             .take_while(|&c| c != 0)
                             .map(|c| c as u8)
                             .collect();

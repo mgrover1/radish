@@ -1,5 +1,12 @@
 name: Release
 
+# Triggered when a `v*.*.*` tag is pushed (e.g. `git tag v0.1.0 && git push --tags`).
+# Builds platform/arch/python-version-matrixed wheels via PyO3/maturin-action,
+# uploads them as artifacts, then publishes to PyPI via the official PyPA
+# action. The crates.io publish step is deferred — the `radish` slot on
+# crates.io is taken; re-add a `publish-crate` job once we rename the Rust
+# crate or coordinate with the upstream owner.
+
 on:
   push:
     tags:
@@ -7,115 +14,176 @@ on:
   workflow_dispatch:
 
 jobs:
+  # --- 1. GitHub Release ---------------------------------------------------
+  # Only fires on tag pushes — workflow_dispatch runs from a branch
+  # would otherwise create a bogus "Release <branch-name>" entry.
   create-release:
-    name: Create Release
+    name: Create GitHub Release
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
-    outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    permissions:
+      contents: write
     steps:
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v5
+
+      - uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          generate_release_notes: true
           draft: false
           prerelease: false
 
-  build-python-wheels:
-    name: Build Python wheels on ${{ matrix.os }}
+  # --- 2. Build wheels for every (os, arch, python) combo -----------------
+  build-wheels:
+    name: ${{ matrix.target }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    needs: create-release
+    # `needs: create-release` would skip this whole job on dispatch
+    # (because create-release is now tag-gated); decouple so dispatches
+    # exercise the wheel matrix as a dry-run.
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          # Linux x86_64 only. manylinux 2_28 (AlmaLinux 8 base) covers
+          # RHEL 8+, Ubuntu 20.04+, Debian 11+. The older 2_17 (CentOS
+          # 7) container ships an `nc-config` whose `--version` output
+          # panics `netcdf-sys 0.9.0`'s build.rs version parser; 2_28's
+          # netcdf is new enough to dodge that.
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            manylinux: '2_28'
+          # macOS — both Intel and Apple Silicon. Both build cleanly
+          # via Homebrew's hdf5/netcdf and PyO3/maturin-action's host
+          # build.
+          - os: macos-latest
+            target: x86_64-apple-darwin
+          - os: macos-latest
+            target: aarch64-apple-darwin
+          # Linux aarch64 + Windows x86_64 are intentionally NOT in
+          # the wheel matrix:
+          #
+          # * Linux aarch64 — the `before-script-linux` yum-installs
+          #   libhdf5/libnetcdf in the host x86_64 container, then
+          #   `cargo` cross-compiles to aarch64. Linker can't find
+          #   aarch64-flavored libs. Fixing this needs proper QEMU
+          #   emulation or a `cross`-rs setup, not a one-line tweak.
+          #
+          # * Windows x86_64 — `hdf5-metno-sys 0.11.3` build.rs panics
+          #   looking for files vcpkg's `x64-windows-static-md`
+          #   triplet doesn't expose. Real fix is half-day-plus of
+          #   triplet/feature debugging that's well-known-painful for
+          #   any crate depending on libhdf5+libnetcdf (see h5py /
+          #   netCDF4-python's CI history).
+          #
+          # Users on those platforms install from the sdist below;
+          # works as long as they have Rust + libhdf5-dev +
+          # libnetcdf-dev locally. Add a real wheel in a future PR
+          # once the cross-compilation toolchain is sorted.
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
 
-    - name: Install Rust toolchain
-      uses: dtolnay/rust-toolchain@stable
+      # System deps for libnetcdf / libhdf5 (CfRadial1 backend). The Linux
+      # builds happen inside the maturin-action manylinux container, so we
+      # install via the container's package manager via the `before-script`
+      # hook (see below).
+      - name: Install system deps (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install netcdf hdf5
+          # Tell rustc / pkg-config where Homebrew put the headers + libs
+          echo "HDF5_DIR=$(brew --prefix hdf5)" >> $GITHUB_ENV
+          echo "NETCDF_DIR=$(brew --prefix netcdf)" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=$(brew --prefix hdf5)/lib/pkgconfig:$(brew --prefix netcdf)/lib/pkgconfig" >> $GITHUB_ENV
 
-    - name: Install system dependencies (Ubuntu)
-      if: runner.os == 'Linux'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libnetcdf-dev libhdf5-dev
+      - name: Build wheel(s) — Linux (manylinux container)
+        if: runner.os == 'Linux'
+        uses: PyO3/maturin-action@v1
+        with:
+          working-directory: python
+          target: ${{ matrix.target }}
+          manylinux: ${{ matrix.manylinux }}
+          args: >-
+            --release --strip --out dist
+            --interpreter python3.12 python3.13
+          # Install libnetcdf-dev / libhdf5-dev inside the manylinux container
+          # so cargo can link against them. The container is centos7-based
+          # (manylinux_2_17), so we use yum.
+          before-script-linux: |
+            if command -v yum >/dev/null 2>&1; then
+              yum install -y hdf5-devel netcdf-devel
+            elif command -v apt-get >/dev/null 2>&1; then
+              apt-get update && apt-get install -y libhdf5-dev libnetcdf-dev
+            fi
 
-    - name: Install system dependencies (macOS)
-      if: runner.os == 'macOS'
-      run: |
-        brew install netcdf hdf5
+      - name: Build wheel(s) — macOS / Windows (host)
+        if: runner.os != 'Linux'
+        uses: PyO3/maturin-action@v1
+        with:
+          working-directory: python
+          target: ${{ matrix.target }}
+          args: >-
+            --release --strip --out dist
+            --interpreter python3.12 python3.13
 
-    - name: Install maturin
-      run: pip install maturin
+      - name: Upload wheel artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: wheels-${{ matrix.target }}
+          path: python/dist/*.whl
 
-    - name: Build wheels
-      run: |
-        cd python
-        maturin build --release --strip
-
-    - name: Upload wheel
-      uses: actions/upload-artifact@v4
-      with:
-        name: wheels-${{ matrix.os }}
-        path: python/target/wheels/*.whl
-
-  publish-python:
-    name: Publish Python Package to PyPI
+  # --- 3. Source distribution ---------------------------------------------
+  build-sdist:
+    name: Build sdist
     runs-on: ubuntu-latest
-    needs: build-python-wheels
-    if: startsWith(github.ref, 'refs/tags/')
     steps:
-    - name: Download all wheels
-      uses: actions/download-artifact@v4
-      with:
-        path: wheels
+      - uses: actions/checkout@v5
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
+      - uses: PyO3/maturin-action@v1
+        with:
+          working-directory: python
+          command: sdist
+          args: --out dist
 
-    - name: Install twine
-      run: pip install twine
+      - uses: actions/upload-artifact@v6
+        with:
+          name: sdist
+          path: python/dist/*.tar.gz
 
-    - name: Publish to PyPI
-      env:
-        TWINE_USERNAME: __token__
-        TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
-      run: |
-        twine upload wheels/**/*.whl
-
-  publish-crate:
-    name: Publish Rust Crate to crates.io
+  # --- 4. Publish everything to PyPI in one upload ------------------------
+  publish:
+    name: Publish to PyPI
     runs-on: ubuntu-latest
-    needs: create-release
+    needs: [build-wheels, build-sdist]
     if: startsWith(github.ref, 'refs/tags/')
+    # Trusted publishing requires `id-token: write` and an environment.
+    # The `pypi` environment must be configured at PyPI (Manage account →
+    # Publishing → Add a pending publisher) before the first run.
+    environment:
+      name: pypi
+      url: https://pypi.org/p/radish-rs
+    permissions:
+      id-token: write
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Download all dist artifacts
+        uses: actions/download-artifact@v6
+        with:
+          path: dist
+          merge-multiple: true
 
-    - name: Install Rust toolchain
-      uses: dtolnay/rust-toolchain@stable
+      - name: List artifacts
+        run: ls -la dist/
 
-    - name: Install system dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libnetcdf-dev libhdf5-dev
-
-    - name: Publish to crates.io
-      env:
-        CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-      run: |
-        cargo publish --package radish-types
-        sleep 10  # Wait for crates.io to index
-        cargo publish --package radish
+      - name: Publish to PyPI
+        # `pypa/gh-action-pypi-publish` is the official PyPA action; it
+        # automatically uses OIDC trusted publishing when `id-token: write`
+        # is set and an environment is configured. Fall back to
+        # `password: ${{ secrets.PYPI_TOKEN }}` if you prefer API tokens.
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/

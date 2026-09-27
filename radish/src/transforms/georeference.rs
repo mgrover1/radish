@@ -1,4 +1,4 @@
-/// Georeferencing utilities (stub for future implementation)
+//! Georeferencing utilities (stub for future implementation).
 
 use crate::{Result, VolumeData};
 

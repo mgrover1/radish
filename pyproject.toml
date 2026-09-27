@@ -1,0 +1,65 @@
+# Workspace-root pyproject for radish.
+#
+# This file's primary purpose is to **anchor `uv`'s project search at this
+# directory**. Without it, running `uv run` from `radish/` (or any sub-
+# directory) walks up the tree and finds `~/python/pyproject.toml`, which
+# defines a different uv workspace whose members do **not** include radish —
+# every `uv run` ends up in `~/python/.venv` where radish isn't installed.
+#
+# By making `radish/` its own project root we keep `uv run` (and `uv sync`)
+# pointed at this directory's `.venv`. The actual Python package lives in
+# `python/` and is built/installed by `maturin develop`; the workspace member
+# below tells `uv` where to find it. Dev tools that aren't part of the radish
+# package itself (notebook stack, S3 client, plotting) are listed in the
+# `dev` dependency group so `uv sync --group dev` materializes the environment
+# the example notebooks expect.
+
+[project]
+name = "radish-workspace"
+version = "0.1.0"
+description = "Workspace-root meta-package for radish — Python bindings live in python/, Rust crate in radish/"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = { text = "MIT OR Apache-2.0" }
+dependencies = [
+    "radish-rs",
+]
+
+[dependency-groups]
+dev = [
+    # Notebook stack — used by the smoke-test and read-chunks notebooks.
+    "jupyterlab>=4",
+    "ipykernel>=7",
+    # S3 client for the live unidata-nexrad-level2-chunks demo.
+    "fsspec>=2026.2",
+    "s3fs>=2026.2",
+    # Comparison reader / parity tests.
+    "xradar>=0.11",
+    # Plotting (sweep PPI in read_chunks.ipynb) + colormaps.
+    "matplotlib>=3.10",
+    "cmweather>=0.3",
+    # Test + lint matching python/pyproject.toml's dev extra so a single
+    # `uv sync --group dev` pulls everything needed to run pytest from root.
+    "pytest>=9",
+    "pytest-cov>=4",
+    "ruff>=0.15",
+    "black>=26",
+    "mypy>=1.20",
+]
+
+[tool.uv.workspace]
+members = ["python"]
+
+# Bind the `radish-rs` dependency above to the local workspace member
+# (`python/`, whose `pyproject.toml` declares `name = "radish-rs"`) rather
+# than the published wheel on PyPI. uv requires the source key here to
+# match the dependency name *and* the workspace member's `name` exactly —
+# referring to it as `radish` (legacy from when the package was named
+# `radish` before the 0.1.0 PyPI rename) breaks `uv run` with
+# "references a workspace ... but is not a workspace member".
+[tool.uv.sources]
+radish-rs = { workspace = true }
+
+# This pyproject doesn't ship a package itself — it's only a workspace anchor.
+[tool.uv]
+package = false

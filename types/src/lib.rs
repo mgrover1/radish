@@ -1,4 +1,6 @@
-/// Common types and constants shared across the radish ecosystem
+//! Common types and constants shared across the radish ecosystem.
+
+use std::fmt;
 
 use serde::{Deserialize, Serialize};
 
@@ -72,6 +74,102 @@ pub enum PlatformType {
     Aircraft,
     /// Satellite
     Satellite,
+}
+
+// `Display` impls below emit the WMO FM 301 / CfRadial2 spec strings. These
+// are the canonical names that go into per-sweep `sweep_mode`/`prt_mode`/
+// `follow_mode`/`platform_type` variables when serialising to xarray or
+// netCDF. Keeping the conversion next to the type definitions avoids drift
+// across backends.
+
+impl fmt::Display for SweepMode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            SweepMode::Azimuth => "azimuth_surveillance",
+            SweepMode::Elevation => "elevation_surveillance",
+            SweepMode::Sector => "sector",
+            SweepMode::Coplane => "coplane",
+            SweepMode::Pointing => "pointing",
+            SweepMode::ManualPpi => "manual_ppi",
+            SweepMode::ManualRhi => "manual_rhi",
+            SweepMode::Idle => "idle",
+            SweepMode::Calibration => "calibration",
+            SweepMode::VerticalPointing => "vertical_pointing",
+        };
+        f.write_str(s)
+    }
+}
+
+impl fmt::Display for FollowMode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            FollowMode::None => "none",
+            FollowMode::Sun => "sun",
+            FollowMode::Vehicle => "vehicle",
+            FollowMode::Aircraft => "aircraft",
+            FollowMode::Target => "target",
+            FollowMode::Manual => "manual",
+        };
+        f.write_str(s)
+    }
+}
+
+impl fmt::Display for PrtMode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // CfRadial2 enumerates `fixed`, `staggered`, `dual`. The detailed
+        // staggered ratio lives in radar_parameters; keep it out of this label.
+        let s = match self {
+            PrtMode::Fixed => "fixed",
+            PrtMode::Staggered2_3 | PrtMode::Staggered3_4 | PrtMode::Staggered4_5 => "staggered",
+            PrtMode::Dual => "dual",
+        };
+        f.write_str(s)
+    }
+}
+
+impl fmt::Display for PlatformType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            PlatformType::Fixed => "fixed",
+            PlatformType::Vehicle => "vehicle",
+            PlatformType::Ship => "ship",
+            PlatformType::Aircraft => "aircraft",
+            PlatformType::Satellite => "satellite",
+        };
+        f.write_str(s)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sweep_mode_strings_match_fm301() {
+        assert_eq!(SweepMode::Azimuth.to_string(), "azimuth_surveillance");
+        assert_eq!(SweepMode::Elevation.to_string(), "elevation_surveillance");
+        assert_eq!(SweepMode::VerticalPointing.to_string(), "vertical_pointing");
+    }
+
+    #[test]
+    fn prt_mode_collapses_staggered_variants_per_fm301() {
+        assert_eq!(PrtMode::Fixed.to_string(), "fixed");
+        assert_eq!(PrtMode::Staggered2_3.to_string(), "staggered");
+        assert_eq!(PrtMode::Staggered3_4.to_string(), "staggered");
+        assert_eq!(PrtMode::Staggered4_5.to_string(), "staggered");
+        assert_eq!(PrtMode::Dual.to_string(), "dual");
+    }
+
+    #[test]
+    fn follow_mode_lowercase() {
+        assert_eq!(FollowMode::None.to_string(), "none");
+        assert_eq!(FollowMode::Sun.to_string(), "sun");
+    }
+
+    #[test]
+    fn platform_type_lowercase() {
+        assert_eq!(PlatformType::Fixed.to_string(), "fixed");
+    }
 }
 
 /// CfRadial2 standard moment names and metadata

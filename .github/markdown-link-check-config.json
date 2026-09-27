@@ -5,6 +5,9 @@
     },
     {
       "pattern": "^https://radish.readthedocs.io"
+    },
+    {
+      "pattern": "^https://github\\.com/aladinor/radish/(releases/tag|compare)/"
     }
   ],
   "replacementPatterns": [],

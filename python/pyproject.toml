@@ -3,14 +3,20 @@ requires = ["maturin>=1.0,<2.0"]
 build-backend = "maturin"
 
 [project]
-name = "radish"
-version = "0.1.0"
+# Distribution name on PyPI: the upstream `radish` slot is already taken
+# (a different project), so this fork ships under `radish-rs`. The
+# Python *import* name stays unchanged (`import radish`) — that's
+# controlled by the `python/radish/` directory and the
+# `[tool.maturin].module-name` entry below.
+name = "radish-rs"
+version = "0.4.0"
 description = "High-performance weather radar data library with Rust core"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.12"
 license = { text = "MIT OR Apache-2.0" }
 authors = [
-    { name = "Maxwell Grover", email = "maxwell.grover@anl.gov" }
+    { name = "Alfonso Ladino", email = "alfonso@atmoscale.ai" },
+    { name = "Maxwell Grover", email = "maxwell.grover@anl.gov" },
 ]
 keywords = ["radar", "weather", "cfradial", "meteorology", "netcdf"]
 classifiers = [
@@ -18,10 +24,8 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Atmospheric Science",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Programming Language :: Rust",
 ]
 
@@ -30,9 +34,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# The legacy `datatree` package on PyPI (v0.1.8.1) is Python-2-era and pulls
+# `from StringIO import StringIO` at install time. Modern xarray (≥ 2024.10)
+# ships `xarray.DataTree` natively, so the extra now just pins xarray.
 xarray = [
-    "xarray>=2023.1.0",
-    "datatree>=0.0.12",
+    "xarray>=2024.10",
 ]
 dev = [
     "pytest>=7.0",
@@ -42,17 +48,18 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/mgrover1/radish"
-Documentation = "https://radish.readthedocs.io"
-Repository = "https://github.com/mgrover1/radish"
-Issues = "https://github.com/mgrover1/radish/issues"
+Homepage = "https://github.com/aladinor/radish"
+Repository = "https://github.com/aladinor/radish"
+Issues = "https://github.com/aladinor/radish/issues"
 
 [project.entry-points."xarray.backends"]
 radish = "radish.backends.xarray_backend:RadishBackendEntrypoint"
 
 [tool.maturin]
 module-name = "radish._radish"
-python-source = "python"
+# Python package lives next to this pyproject (`./radish/`); maturin needs
+# `python-source` pointing at the directory containing that package.
+python-source = "."
 features = ["pyo3/extension-module"]
 
 [tool.pytest.ini_options]

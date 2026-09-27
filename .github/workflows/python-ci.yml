@@ -13,21 +13,22 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ['3.9', '3.10', '3.11', '3.12']
-        exclude:
-          # Reduce CI time - test fewer combinations
-          - os: windows-latest
-            python-version: '3.9'
-          - os: windows-latest
-            python-version: '3.10'
+        # Windows is excluded until proper system-dep handling lands
+        # (currently the workflow has a stub for it that always fails).
+        # Re-add via vcpkg or pre-built `libnetcdf` / `libhdf5` binaries.
+        os: [ubuntu-latest, macos-latest]
+        # Python 3.9-3.11 dropped: 3.9 is EOL (Oct 2025) and our
+        # internal NEXRAD decoder uses PEP 604 (`Path | None`)
+        # which requires 3.10+; condensing the matrix to current
+        # supported versions only.
+        python-version: ['3.12', '3.13']
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.python-version }}
 
@@ -35,13 +36,13 @@ jobs:
       uses: dtolnay/rust-toolchain@stable
 
     - name: Cache cargo registry
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ~/.cargo/registry
         key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
 
     - name: Cache cargo build
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: target
         key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
@@ -56,12 +57,14 @@ jobs:
       if: runner.os == 'macOS'
       run: |
         brew install netcdf hdf5
-
-    - name: Install system dependencies (Windows)
-      if: runner.os == 'Windows'
-      run: |
-        # Note: You may need to use vcpkg or pre-built binaries
-        echo "Windows dependencies installation needed"
+        # Homebrew's `hdf5` formula tracks whatever HDF5 release is
+        # current (unversioned) — hdf5-metno-sys's Homebrew autodetect
+        # only recognizes specific versioned formula names (hdf5@1.14,
+        # hdf5@2.0, ...) and misses a plain `hdf5` keg. Exporting
+        # HDF5_DIR/NETCDF_DIR directly sidesteps that probe entirely.
+        echo "HDF5_DIR=$(brew --prefix hdf5)" >> $GITHUB_ENV
+        echo "NETCDF_DIR=$(brew --prefix netcdf)" >> $GITHUB_ENV
+        echo "PKG_CONFIG_PATH=$(brew --prefix hdf5)/lib/pkgconfig:$(brew --prefix netcdf)/lib/pkgconfig" >> $GITHUB_ENV
 
     - name: Install Python dependencies
       run: |
@@ -69,19 +72,33 @@ jobs:
         pip install maturin
 
     - name: Build Python package
+      # `target/` is restored from a cache shared across the matrix (key
+      # depends only on OS + Cargo.lock), so a previous Python version's
+      # wheel may already be sitting in `target/wheels/`. Clear it first
+      # so the next install step picks up exactly the wheel built for
+      # this matrix entry.
       run: |
+        rm -rf target/wheels
         cd python
         maturin build --release
 
     - name: Install Python package
-      run: |
-        cd python
-        pip install --find-links=target/wheels radish
+      # Maturin writes wheels to the workspace `target/wheels/` dir
+      # (not `python/target/wheels/`). Install from the wheel directly
+      # so pip's resolver never falls through to PyPI's unrelated
+      # `radish` package (a selenium-based test framework that
+      # outranks our 0.1.0).
+      run: pip install target/wheels/*.whl
 
     - name: Install test dependencies
+      # `xarray` is a hard dep of the engine tests in test_nexrad.py.
+      # `datatree` is the legacy DataTree package; xarray>=2024.10 ships
+      # `xarray.DataTree` natively. Modern xarray covers both.
+      # `xradar` is loaded via pytest.importorskip in the parity test —
+      # if missing, the parity check is skipped instead of failing.
       run: |
-        pip install pytest pytest-cov numpy
-        pip install xarray datatree || echo "Optional dependencies not available"
+        pip install pytest pytest-cov numpy xarray
+        pip install xradar || echo "xradar not available — parity test will skip"
 
     - name: Run Python tests
       run: |
@@ -93,16 +110,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
-        python-version: '3.11'
+        python-version: '3.13'
 
     - name: Install linting tools
+      # Pin the linters. Unpinned, CI installs whatever ruff/black
+      # released most recently, so a new lint rule (e.g. ruff 0.16's
+      # I001 import-sort change) fails CI on unrelated PRs with no code
+      # change. Bump these deliberately, in a PR that also applies the
+      # new autofixes.
       run: |
-        pip install black ruff
+        pip install black==26.3.1 ruff==0.15.12
 
     - name: Check formatting with black
       run: |
@@ -119,19 +141,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
-        python-version: '3.11'
+        python-version: '3.13'
 
     - name: Install dependencies
-      run: |
-        pip install mypy numpy
-        pip install xarray datatree || echo "Optional dependencies skipped"
+      # xarray is needed for the BackendEntrypoint class that
+      # RadishBackendEntrypoint subclasses; without it the type-check is
+      # meaningless.
+      run: pip install mypy numpy xarray
 
     - name: Run mypy
       run: |
         cd python
-        mypy radish/ --ignore-missing-imports || echo "Type checking completed with warnings"
+        mypy radish/ --ignore-missing-imports

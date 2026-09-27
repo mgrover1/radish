@@ -1,0 +1,58 @@
+[package]
+name = "radish-wasm"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+name = "radish_wasm"
+# "rlib" alongside "cdylib" is needed for `wasm-bindgen-test`: an
+# integration test binary under `tests/` links against this crate as a
+# normal Rust dependency (rlib), separately from the cdylib artifact JS
+# actually consumes. cdylib-only (the prior state — this crate had zero
+# tests of any kind before this) can't be linked against at all, so
+# `cargo test -p radish-wasm --target wasm32-unknown-unknown` would fail
+# to build regardless of what the tests contain.
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# `default-features = false` is the point of this crate — proves Phase 1's
+# feature gate works end-to-end: no hdf5/netcdf/rayon in the compile graph
+# (see `radish/Cargo.toml`'s `[features]` doc comment).
+#
+# Deliberately NOT `radish = { workspace = true, default-features = false
+# }`: Cargo only honours a member's `default-features = false` override on
+# a workspace-inherited dependency if the WORKSPACE-level entry ALSO
+# declares `default-features = false` — ours doesn't (every other member
+# needs the default `native` feature), so that form silently no-ops
+# (confirmed via `cargo tree -p radish-wasm`, which still pulled in
+# hdf5/netcdf/rayon before this was caught). A direct `path` dependency
+# sidesteps workspace feature inheritance entirely.
+radish = { path = "../radish", default-features = false }
+ndarray = { workspace = true }
+wasm-bindgen = "0.2.100"
+js-sys = "0.3"
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3"
+# Both pure-Rust, no getrandom/OS entropy needed — compile cleanly for
+# wasm32-unknown-unknown. Used by `tests/real_fixtures.rs` to hash decoded
+# codes arrays and parse the committed `expected/*.json` oracle sidecars,
+# matching `radish/tests/test_nexrad_level3_xradar_oracle.rs`'s
+# `codes_sha256`/`load_expected_file` pattern instead of a weaker
+# permutation-blind checksum.
+sha2 = "0.10"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# `tests/real_fixtures.rs`'s cases are gated on `--cfg has_real_fixtures`
+# (see `build.rs`), NOT a Cargo feature — a feature was tried first and
+# reverted: this workspace's CI runs `--all-features` on several steps
+# (`.github/workflows/rust-ci.yml`), which would sweep an opt-in feature
+# on unconditionally and break the build without
+# `RADISH_NEXRAD_LEVEL3_FIXTURE_DIR` set (confirmed directly — `cargo test
+# -p radish-wasm --all-features --no-run` failed to compile). `build.rs`
+# emits the cfg only when that env var is present, which `--all-features`
+# has no way to touch.

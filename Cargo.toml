@@ -3,11 +3,12 @@ members = [
     "radish",
     "python",
     "types",
+    "wasm",
 ]
 resolver = "2"
 
 [workspace.package]
-version = "0.1.0"
+version = "0.4.0"
 edition = "2021"
 authors = ["Maxwell Grover <maxwell.grover@anl.gov>"]
 license = "MIT OR Apache-2.0"
@@ -30,13 +31,48 @@ chrono = { version = "0.4", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
-# File I/O
-hdf5 = "0.8"
-netcdf = "0.9"
+# File I/O. We use the maintained `hdf5-metno` fork because the original `hdf5`
+# crate is stuck at 0.8 and does not recognise HDF5 ≥ 1.14 (Ubuntu 25.04 ships
+# 1.14.5). 0.12.x pairs with hdf5-metno-sys 0.11.x, whose H5_VERSION parser
+# doesn't recognise HDF5 2.x (Homebrew's `hdf5` formula default as of
+# 2026-09); 0.15 pairs with hdf5-metno-sys 0.12.x, which adds that support.
+# `netcdf` 0.12 internally pulls a compatible `hdf5-sys`.
+hdf5 = { package = "hdf5-metno", version = "0.15" }
+netcdf = "0.12"
 
-# Python bindings
-pyo3 = { version = "0.22", features = ["extension-module"] }
-numpy = "0.22"
+# NEXRAD Level 2 backend — `nexrad` and `nexrad-model` are dev-only
+# now (see `radish/Cargo.toml` `[dev-dependencies]`); the runtime
+# decoder lives at `radish::backends::nexrad::decode` and pulls
+# only `bzip2` + `rayon` declared below.
+
+# Sigmet/IRIS RAW backend (Vaisala SIGMET binary, Vaisala ICD 2620002AA).
+# No upstream Rust crate exists; we port struct definitions from xradar's
+# `iris.py`. `byteorder` for explicit little-endian primitive reads,
+# `bytemuck` for `#[repr(C, packed)]` zero-copy casts on the on-wire structs.
+byteorder = "1.5"
+bytemuck = { version = "1.20", features = ["derive"] }
+
+# Parallel sweep adaptation in radish::backends::{nexrad,sigmet}::adapter
+# and parallel LDM decompression in `nexrad::decode::record::decompress_all`.
+rayon = "1.10"
+
+# bzip2 decompression for NEXRAD Level 2 LDM records, used by the
+# in-tree decoder at `radish::backends::nexrad::decode`.
+bzip2 = "0.6"
+
+# Dev-only: `nexrad` (1.0.0-rc.4 with `parallel` for the rayon-based
+# LDM decode) is the side-by-side parity reference for
+# `radish/tests/test_nexrad_internal_parity.rs`. We deliberately
+# stay off the `default = ["full"]` set so test builds don't pull
+# `image` (render), `reqwest`+`tokio` (aws), and friends.
+nexrad = { version = "1.0.0-rc.4", default-features = false, features = ["model", "decode", "data", "chrono", "parallel"] }
+
+# Python bindings. `pyo3` and `pyo3-build-config` ship in lockstep from
+# the same repo and must stay on the same version — keep both here so a
+# future bump moves one line, not two files.
+pyo3 = { version = "0.29", features = ["extension-module"] }
+pyo3-build-config = "0.29"
+numpy = "0.29"
 
 [profile.release]
 opt-level = 3

@@ -1,10 +1,10 @@
-/// Volume-level data structures
+//! Volume-level data structures.
 
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
 use radish_types::PlatformType;
+use serde::{Deserialize, Serialize};
 
-use super::{SweepData, SweepMetadata};
+use super::{NexradVolumeAttrs, SigmetVolumeAttrs, SweepData};
 
 /// Complete radar volume data
 #[derive(Debug, Clone)]
@@ -92,6 +92,24 @@ pub struct VolumeMetadata {
 
     /// Additional attributes
     pub attributes: std::collections::HashMap<String, String>,
+
+    /// NEXRAD-specific volume attrs (MSG_2 / MSG_5). `None` for non-NEXRAD volumes.
+    pub nexrad: Option<NexradVolumeAttrs>,
+
+    /// Sigmet/IRIS-specific volume attrs (TASK_CONFIGURATION + INGEST_HEADER).
+    /// `None` for non-Sigmet volumes.
+    pub sigmet: Option<SigmetVolumeAttrs>,
+
+    /// Positional indices of provably-partial sweeps (0-based, in
+    /// *original scan order* — the `N` of each `sweep_N` name; under a
+    /// drop policy these sweeps are absent from `sweep_group_names`
+    /// and the indices record what was dropped). Partial = a NEXRAD
+    /// volume truncated mid-sweep, joined mid-rotation, or with an
+    /// interior chunk gap (plan 0009). Stored, not derived: the
+    /// metadata-only scan path never materializes `SweepData`.
+    /// Empty for formats without partial-volume semantics.
+    #[serde(default)]
+    pub incomplete_sweep_indices: Vec<usize>,
 }
 
 impl VolumeMetadata {
@@ -120,19 +138,20 @@ impl VolumeMetadata {
             sweep_fixed_angles: Vec::new(),
             frequency: None,
             attributes: std::collections::HashMap::new(),
+            nexrad: None,
+            sigmet: None,
+            incomplete_sweep_indices: Vec::new(),
         }
     }
 
     /// Generate sweep group names based on number of sweeps
     pub fn generate_sweep_names(&mut self, num_sweeps: usize) {
-        self.sweep_group_names = (0..num_sweeps)
-            .map(|i| format!("sweep_{}", i))
-            .collect();
+        self.sweep_group_names = (0..num_sweeps).map(|i| format!("sweep_{}", i)).collect();
     }
 }
 
 /// Radar calibration data
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct RadarCalibration {
     /// Calibration time
     pub time: Option<DateTime<Utc>>,
@@ -205,35 +224,4 @@ pub struct RadarCalibration {
 
     /// System PHIDP (degrees)
     pub system_phidp: Option<f64>,
-}
-
-impl Default for RadarCalibration {
-    fn default() -> Self {
-        Self {
-            time: None,
-            pulse_width: None,
-            xmit_power_h: None,
-            xmit_power_v: None,
-            two_way_waveguide_loss_h: None,
-            two_way_waveguide_loss_v: None,
-            two_way_radome_loss_h: None,
-            two_way_radome_loss_v: None,
-            receiver_gain_h: None,
-            receiver_gain_v: None,
-            base_dbz_1km_h: None,
-            base_dbz_1km_v: None,
-            sun_power_h: None,
-            sun_power_v: None,
-            noise_power_h: None,
-            noise_power_v: None,
-            receiver_slope_h: None,
-            receiver_slope_v: None,
-            dynamic_range_h: None,
-            dynamic_range_v: None,
-            zdr_correction: None,
-            ldr_correction_h: None,
-            ldr_correction_v: None,
-            system_phidp: None,
-        }
-    }
 }

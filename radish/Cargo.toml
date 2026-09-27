@@ -13,9 +13,58 @@ anyhow = { workspace = true }
 ndarray = { workspace = true }
 chrono = { workspace = true }
 serde = { workspace = true }
-serde_json = { workspace = true }
-hdf5 = { workspace = true }
-netcdf = { workspace = true }
+# `float_roundtrip`: without it, serde_json's default float parser can be
+# off by 1 ULP on values that need their full 17-significant-digit
+# shortest round-trip representation (observed on NEXRAD Level 3 PDB
+# `height_m`, e.g. `760 * 0.3048` — see
+# `radish/tests/test_nexrad_level3_parity.rs`, whose oracle-parity JSON
+# sidecars need exact f64 round-tripping through JSON, not a tolerance).
+serde_json = { workspace = true, features = ["float_roundtrip"] }
+hdf5 = { workspace = true, optional = true }
+netcdf = { workspace = true, optional = true }
+byteorder = { workspace = true }
+bytemuck = { workspace = true }
+bzip2 = { workspace = true }
+rayon = { workspace = true, optional = true }
+
+# `native` bundles every dependency that cannot target `wasm32-unknown-unknown`:
+# `hdf5`/`netcdf` link C libraries (no wasm build story at all for HDF5), and
+# `rayon`'s thread pool needs `wasm-bindgen-rayon` + COOP/COEP headers we
+# deliberately don't require of a static-hosted free tier (see
+# `docs/NEXRAD_LEVEL3_WASM.md` §5). `default = ["native"]` keeps every existing
+# native build (CLI, Python bindings, tests) unchanged; only an explicit
+# `--no-default-features` build (the `wasm` crate, and the `wasm32-unknown-unknown`
+# CI check) drops them.
+[features]
+default = ["native"]
+native = ["dep:hdf5", "dep:netcdf", "dep:rayon"]
 
 [dev-dependencies]
 tempfile = "3.8"
+criterion = { version = "0.5", features = ["html_reports"] }
+# Property-based tests in `backends::common::buffer` for the
+# `decode_into_array` invariant matrix (random nrays/ngates/max_gates →
+# never panic, untouched cells always NaN, output shape always
+# `(nrays × max_gates)`). std-feature only; we don't need `regex`.
+proptest = { version = "1.5", default-features = false, features = ["std"] }
+# SHA-256 verification of NEXRAD test-fixture corpus. See
+# `radish/tests/fixtures/CORPUS.md` for the canonical sums.
+sha2 = "0.10"
+# Parameterized tests for the message-iteration loop's boundary-resync
+# state space (under-read / exact / over-read / past-buffer).
+rstest = "0.21"
+# Side-by-side parity reference for `tests/test_nexrad_internal_parity.rs`.
+# Not a runtime dep; the production decode path is fully in-tree.
+nexrad = { workspace = true }
+
+[[bench]]
+name = "nexrad"
+harness = false
+
+[[bench]]
+name = "sigmet"
+harness = false
+
+[[bench]]
+name = "dealias"
+harness = false

@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@stable
@@ -23,12 +23,15 @@ jobs:
         sudo apt-get install -y libnetcdf-dev libhdf5-dev
 
     - name: Run benchmarks
-      run: |
-        # Add cargo bench when benchmarks are implemented
-        echo "Benchmarks will be run here"
-        # cargo bench --no-fail-fast
+      # The criterion bench at radish/benches/nexrad.rs gates on
+      # RADISH_NEXRAD_FIXTURE — it prints a skip message and exits cleanly
+      # if the env var is unset, so this is safe even without a fixture
+      # checked into the repo.
+      run: cargo bench -p radish --bench nexrad
 
-    - name: Comment benchmark results
-      if: github.event_name == 'pull_request'
-      run: |
-        echo "Benchmark results would be posted as PR comment"
+    - name: Upload bench output
+      uses: actions/upload-artifact@v6
+      with:
+        name: criterion-report
+        path: target/criterion/
+        if-no-files-found: ignore

@@ -16,38 +16,49 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        # Windows is excluded until proper system-dep handling lands
+        # (currently the workflow has a stub for it that always fails).
+        # Re-add via vcpkg or pre-built `libnetcdf` / `libhdf5` binaries.
+        os: [ubuntu-latest, macos-latest]
         rust: [stable, beta]
         exclude:
-          # Reduce CI time - only test beta on Ubuntu
+          # Reduce CI time - only test beta on Ubuntu.
           - os: macos-latest
-            rust: beta
-          - os: windows-latest
             rust: beta
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@master
       with:
         toolchain: ${{ matrix.rust }}
 
+    - name: Set up Python 3.13
+      # PyO3 0.22 (used by `radish-python`) caps at Python 3.13.
+      # macos-latest currently ships 3.14 by default, which fails with
+      # "the configured Python interpreter version (3.14) is newer than
+      # PyO3's maximum supported version (3.13)". Pin a compatible
+      # interpreter for the workspace build.
+      uses: actions/setup-python@v6
+      with:
+        python-version: '3.13'
+
     - name: Cache cargo registry
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ~/.cargo/registry
         key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
 
     - name: Cache cargo index
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ~/.cargo/git
         key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
 
     - name: Cache cargo build
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: target
         key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
@@ -62,12 +73,14 @@ jobs:
       if: runner.os == 'macOS'
       run: |
         brew install netcdf hdf5
-
-    - name: Install system dependencies (Windows)
-      if: runner.os == 'Windows'
-      run: |
-        # Note: You may need to use vcpkg or pre-built binaries for NetCDF/HDF5 on Windows
-        echo "Windows dependencies installation needed"
+        # Homebrew's `hdf5` formula tracks whatever HDF5 release is
+        # current (unversioned) — hdf5-metno-sys's Homebrew autodetect
+        # only recognizes specific versioned formula names (hdf5@1.14,
+        # hdf5@2.0, ...) and misses a plain `hdf5` keg. Exporting
+        # HDF5_DIR/NETCDF_DIR directly sidesteps that probe entirely.
+        echo "HDF5_DIR=$(brew --prefix hdf5)" >> $GITHUB_ENV
+        echo "NETCDF_DIR=$(brew --prefix netcdf)" >> $GITHUB_ENV
+        echo "PKG_CONFIG_PATH=$(brew --prefix hdf5)/lib/pkgconfig:$(brew --prefix netcdf)/lib/pkgconfig" >> $GITHUB_ENV
 
     - name: Check formatting
       if: matrix.rust == 'stable' && matrix.os == 'ubuntu-latest'
@@ -86,15 +99,77 @@ jobs:
     - name: Build examples
       run: cargo build --examples --verbose
 
+  wasm:
+    name: wasm32 (radish core, --no-default-features)
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: wasm32-unknown-unknown
+
+    - name: Cache cargo registry
+      uses: actions/cache@v5
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-cargo-registry-wasm32-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Cache cargo build
+      uses: actions/cache@v5
+      with:
+        path: target
+        key: ${{ runner.os }}-cargo-build-target-wasm32-${{ hashFiles('**/Cargo.lock') }}
+
+    # No `libnetcdf`/`libhdf5` install here on purpose: this job's whole
+    # point is proving `radish` never links them under `--no-default-features`.
+    # If a future PR reintroduces an unconditional `hdf5`/`netcdf` import,
+    # this is the job that catches it — see `docs/NEXRAD_LEVEL3_WASM.md` §5.
+    - name: Check radish core for wasm32-unknown-unknown
+      run: cargo check -p radish --no-default-features --target wasm32-unknown-unknown
+
+    - name: Assert netcdf/hdf5 never entered the wasm32 dependency graph
+      run: |
+        set -euo pipefail
+        if cargo tree -p radish --no-default-features --target wasm32-unknown-unknown -e normal \
+            | grep -iE "netcdf|hdf5-metno-sys|libz-sys"; then
+          echo "::error::netcdf/hdf5/libz-sys leaked into the wasm32 --no-default-features build" >&2
+          exit 1
+        fi
+        echo "confirmed: no netcdf/hdf5/libz-sys in the wasm32 dependency graph"
+
+    # The actual deliverable: build the wasm-bindgen crate itself, in
+    # release mode, for the real wasm32 target.
+    - name: Build radish-wasm for wasm32-unknown-unknown (release)
+      run: cargo build -p radish-wasm --release --target wasm32-unknown-unknown
+
+    - name: Assert netcdf/hdf5/rayon never entered radish-wasm's dependency graph
+      run: |
+        set -euo pipefail
+        if cargo tree -p radish-wasm --target wasm32-unknown-unknown -e normal \
+            | grep -iE "netcdf|hdf5-metno-sys|libz-sys|rayon"; then
+          echo "::error::netcdf/hdf5/libz-sys/rayon leaked into radish-wasm's dependency graph" >&2
+          exit 1
+        fi
+        echo "confirmed: no netcdf/hdf5/libz-sys/rayon in radish-wasm's dependency graph"
+
   coverage:
     name: Code Coverage
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@stable
+
+    - name: Set up Python 3.13
+      # See `Set up Python 3.13` comment in the `test` job above.
+      uses: actions/setup-python@v6
+      with:
+        python-version: '3.13'
 
     - name: Install system dependencies
       run: |
@@ -105,10 +180,18 @@ jobs:
       run: cargo install cargo-tarpaulin
 
     - name: Run tests with coverage
-      run: cargo tarpaulin --verbose --all-features --workspace --timeout 120 --out xml
+      # `radish-python` is a `cdylib` built with PyO3's `extension-module`
+      # feature, which deliberately leaves Python C-API symbols unresolved
+      # at link time (Python supplies them at runtime when the .so is
+      # imported). Tarpaulin builds a regular test binary and links with
+      # the system linker, so every `pyo3_ffi` symbol resolves to
+      # `undefined symbol: PyBool_Type` etc. The Python bindings are
+      # exercised by `python-ci.yml`'s pytest suite — exclude the crate
+      # from Rust coverage instead of trying to special-case its link.
+      run: cargo tarpaulin --verbose --all-features --workspace --exclude radish-python --timeout 120 --out xml
 
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v6
       with:
         files: ./cobertura.xml
         fail_ci_if_error: false
@@ -118,9 +201,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
+
+    # Inline `cargo audit` instead of `rustsec/audit-check@v2` — that
+    # action has no Node 24-compatible release as of May 2026 and was
+    # the last source of Node.js 20 deprecation warnings on Rust CI.
+    # Direct invocation also keeps any future ignore-list visible in
+    # plain shell rather than buried in an action input.
+    #
+    # No `--ignore` entries: every advisory is fixed outright. The
+    # previous `--ignore RUSTSEC-2025-0020` justified pinning pyo3 0.22
+    # on the grounds that "the upstream `nexrad` crate ecosystem hasn't
+    # moved yet" — that was stale. `cargo tree -i pyo3` shows pyo3 is
+    # pulled only by `numpy` and by us; `nexrad` is a dev-dependency
+    # that doesn't depend on pyo3 at all. Nothing pinned us to 0.22.
+    - name: Install cargo-audit
+      run: cargo install --locked cargo-audit
 
     - name: Run security audit
-      uses: rustsec/audit-check@v2
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
+      run: cargo audit

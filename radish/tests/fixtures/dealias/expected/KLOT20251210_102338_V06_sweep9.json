@@ -1,0 +1,37 @@
+{
+  "fixture": "KLOT20251210_102338_V06",
+  "folds_nonzero_count": 79418,
+  "folds_row0_sample": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "folds_sha256": "a067ddbc859b8418a558d00c6a340ac0ae049fe20ef77d0fc4f8ff12f7443549",
+  "folds_sum": 47952,
+  "moment": "VRADH",
+  "n_valid_gates": 132034,
+  "nyquist": 11.55,
+  "rays_wrap_around": true,
+  "shape": [
+    360,
+    1336
+  ],
+  "sweep_index": 9
+}
