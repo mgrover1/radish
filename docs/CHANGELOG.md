@@ -413,8 +413,8 @@ The "browser-reachable NEXRAD Level 3 + region-based velocity dealiasing" releas
   builder, never adding the sweep's absolute `YMDS_TIME` start time;
   `read_ymds_time` also discarded the milliseconds field. Both are
   fixed, so the IRIS `time` axis now matches xradar's
-  `open_iris_datatree` to the millisecond. Reported via raw2zarr's
-  IRIS backend, which could not key its `vcp_time` axis on radish
+  `open_iris_datatree` to the millisecond. Reported by a downstream
+  IRIS consumer that could not key its `vcp_time` axis on radish
   until this was resolved. (#28)
 
 - **Sigmet/IRIS: power/phase moments were over-masked vs xradar** —
@@ -490,7 +490,7 @@ The "browser-reachable NEXRAD Level 3 + region-based velocity dealiasing" releas
 
 ## [0.2.5] - 2026-05-05
 
-The "every NEXRAD timestamp was +1 day" fix-only release. ICD 2620002R Table III §3.2.4.17 specifies the per-radial `modified_julian_date` field as 1-indexed days since 1970-01-01, but radish 0.2.2 through 0.2.4 computed `days * 86_400 + secs` (no `-1`), shifting every emitted timestamp by exactly +86,400,000 ms — every sweep, every ray, every file. xradar's `nexrad_level2.py:open_sweeps_as_dict` and danielway/nexrad's `volume/record.rs` both subtract 1; only radish disagreed. Filed by the raw2zarr maintainer, who currently mitigates with an in-process `-86400` shim that 0.2.5 lets them remove. (#26) Plus CI maintenance: GitHub Actions bumped to Node 24-compatible versions before the deprecation deadline (#25).
+The "every NEXRAD timestamp was +1 day" fix-only release. ICD 2620002R Table III §3.2.4.17 specifies the per-radial `modified_julian_date` field as 1-indexed days since 1970-01-01, but radish 0.2.2 through 0.2.4 computed `days * 86_400 + secs` (no `-1`), shifting every emitted timestamp by exactly +86,400,000 ms — every sweep, every ray, every file. xradar's `nexrad_level2.py:open_sweeps_as_dict` and danielway/nexrad's `volume/record.rs` both subtract 1; only radish disagreed. Filed by a downstream user, who currently mitigates with an in-process `-86400` shim that 0.2.5 lets them remove. (#26) Plus CI maintenance: GitHub Actions bumped to Node 24-compatible versions before the deprecation deadline (#25).
 
 ### Fixed
 
@@ -534,9 +534,8 @@ The "every NEXRAD timestamp was +1 day" fix-only release. ICD 2620002R Table III
   three unit tests pinning the day-1 boundary + the KLOT
   filename-truth fixture value, plus tightened integration tests
   on the KLOT 2025-12-10 + KVNX 2011 fixtures asserting the
-  decoded date matches the filename-encoded one. Filed by the
-  raw2zarr maintainer at
-  `https://github.com/aladinor/raw2zarr` — they currently
+  decoded date matches the filename-encoded one. Filed by a
+  downstream user — they currently
   mitigate with an in-process `-86400` shim that this fix lets
   them remove. Thanks to the filer for the precise reproducer
   + cross-implementation comparison against xradar and
@@ -560,7 +559,7 @@ The "metadata-fast-path on bytes / streams" release. Closes the input-shape asym
   fsspec's `compression="gzip"` filter, `gzip.decompress(raw)`, or
   obstore registered as an fsspec backend
   (`from obstore.fsspec import register`). Closes the
-  fail-fallback-to-xradar pattern in raw2zarr v0.18.0 PR #244 — the
+  fail-fallback-to-xradar pattern downstream consumers needed — the
   ~10× metadata-extraction speedup is now reachable on S3 input
   through a single `fsspec.open(uri, 'rb').read() →
   radish.scan(blob)` hop.

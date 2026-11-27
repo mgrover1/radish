@@ -278,8 +278,8 @@ def test_sweep_fixed_angle_matches_xradar(parity_pair):
     * **NEXRAD**: tightened to 1e-4° after the MSG_5 commanded-vs-
       MSG_31-median fix (`radish/src/backends/nexrad/adapter.rs::fixed_angle_for`).
       The previous divergence was ~0.044° — enough to break downstream
-      code comparing against the VCP elevation table (e.g. raw2zarr's
-      `check_dynamic_scan` with a 0.05° tolerance).
+      code comparing against the VCP elevation table (e.g. a
+      dynamic-scan check with a 0.05° tolerance).
 
     * **Sigmet**: tolerated to 0.01°. radish reads the per-sweep
       `IngestDataHeader.fixed_angle` (BIN2-encoded, achieved beam

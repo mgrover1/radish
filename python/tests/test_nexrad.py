@@ -729,7 +729,7 @@ def test_scan_path_bytes_filelike_chunks_all_yield_same_metadata(nexrad_fixture)
 
     # Strict equality from the downstream issue's verification plan —
     # full attrs dict + per-sweep MSG_5 list bit-identical (the fields
-    # raw2zarr#244's chain inspects on every file).
+    # a downstream bulk-ingest chain inspects on every file).
     assert md_path.attributes == md_bytes.attributes
     assert md_path.attributes == md_file.attributes
     assert md_path.attributes == md_chunks.attributes
