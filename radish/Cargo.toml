@@ -9,7 +9,6 @@ repository.workspace = true
 [dependencies]
 radish-types = { workspace = true }
 thiserror = { workspace = true }
-anyhow = { workspace = true }
 ndarray = { workspace = true }
 chrono = { workspace = true }
 serde = { workspace = true }
@@ -23,7 +22,6 @@ serde_json = { workspace = true, features = ["float_roundtrip"] }
 hdf5 = { workspace = true, optional = true }
 netcdf = { workspace = true, optional = true }
 byteorder = { workspace = true }
-bytemuck = { workspace = true }
 bzip2 = { workspace = true }
 rayon = { workspace = true, optional = true }
 

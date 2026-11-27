@@ -21,7 +21,6 @@ radish-types = { path = "types" }
 
 # Error handling
 thiserror = "2.0"
-anyhow = "1.0"
 
 # Data structures
 ndarray = "0.16"
@@ -47,10 +46,8 @@ netcdf = "0.12"
 
 # Sigmet/IRIS RAW backend (Vaisala SIGMET binary, Vaisala ICD 2620002AA).
 # No upstream Rust crate exists; we port struct definitions from xradar's
-# `iris.py`. `byteorder` for explicit little-endian primitive reads,
-# `bytemuck` for `#[repr(C, packed)]` zero-copy casts on the on-wire structs.
+# `iris.py`. `byteorder` for explicit little-endian primitive reads.
 byteorder = "1.5"
-bytemuck = { version = "1.20", features = ["derive"] }
 
 # Parallel sweep adaptation in radish::backends::{nexrad,sigmet}::adapter
 # and parallel LDM decompression in `nexrad::decode::record::decompress_all`.

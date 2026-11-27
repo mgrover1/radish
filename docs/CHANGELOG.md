@@ -99,6 +99,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   trusted-publisher instructions in `docs/RELEASING.md`, the version
   compare links at the bottom of this file, and the link-checker
   ignore pattern.
+- **Dropped three unused dependencies.** `anyhow` and `bytemuck` from
+  the `radish` crate (and the workspace table) and `chrono` from
+  `radish-types` were declared but never used; Rust 1.100 now warns
+  about them. Removes `anyhow`, `bytemuck` and `bytemuck_derive` from
+  `Cargo.lock`.
+  Also fixed the two dead `v0.1.0` links at the bottom of this file —
+  no `v0.1.0` tag was ever created, so `[0.2.0]` now links to its
+  release page and `0.1.0` is unlinked.
 - **Bumped `thiserror` from 1.0 to 2.0.** No source changes needed;
   the rest of the dependency graph already used 2.x, so this drops the
   duplicate `thiserror`/`thiserror-impl` 1.0.69 from `Cargo.lock`.
@@ -849,7 +857,7 @@ The "internal NEXRAD decoder" release. radish now ships a from-scratch ICD-26200
   `.gitignore` along with `.claude/` — these were author-private
   working notes that didn't belong in the repo. (#10)
 
-## [0.1.0] - 2026-05-03
+## 0.1.0 - 2026-05-03
 
 First public release on PyPI as
 [`radish-rs`](https://pypi.org/project/radish-rs/0.1.0/).
@@ -916,5 +924,4 @@ First public release on PyPI as
 [0.2.4]: https://github.com/mgrover1/radish/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/mgrover1/radish/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/mgrover1/radish/compare/v0.2.0...v0.2.2
-[0.2.0]: https://github.com/mgrover1/radish/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/mgrover1/radish/releases/tag/v0.1.0
+[0.2.0]: https://github.com/mgrover1/radish/releases/tag/v0.2.0

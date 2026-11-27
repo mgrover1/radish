@@ -11,7 +11,7 @@
 //!
 //! * `mod.rs` — `SigmetBackend` struct and `RadarBackend` trait impl.
 //! * `sniff.rs` — magic-byte / extension-based format detection.
-//! * `structs.rs` — `#[repr(C, packed)]` `bytemuck::Pod` definitions for
+//! * `structs.rs` — explicit little-endian field-by-field parsers for
 //!   the on-wire fixed-layout structs.
 //! * `decode.rs` — top-level walker (`parse_volume`), per-record / per-ray
 //!   parsers, and the RLE decompressor.
