@@ -2,10 +2,18 @@ use radish::backends::{RadarBackend, SigmetBackend};
 use std::path::Path;
 
 fn main() {
-    let path = "/home/alfonso-ladino/python/imhpa/data/Radar Tolé/20260124/CHI260124100554.RAWE5P1";
+    // Path to an IRIS RAW file: first CLI argument, else `RADISH_SIGMET_FIXTURE`.
+    let Some(path) = std::env::args()
+        .nth(1)
+        .or_else(|| std::env::var("RADISH_SIGMET_FIXTURE").ok())
+    else {
+        eprintln!("usage: sigmet_smoke <IRIS RAW file>  (or set RADISH_SIGMET_FIXTURE)");
+        std::process::exit(2);
+    };
+    let path = Path::new(&path);
     let backend = SigmetBackend::new();
-    println!("can_read: {}", backend.can_read(Path::new(path)));
-    let result = backend.read_volume(Path::new(path));
+    println!("can_read: {}", backend.can_read(path));
+    let result = backend.read_volume(path);
     match result {
         Ok(v) => {
             println!("OK:");
