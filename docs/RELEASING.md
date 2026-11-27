@@ -11,13 +11,13 @@ stays unchanged regardless — that's a different namespace.
 
 2. **Configure trusted publishing** (no token to rotate):
    1. PyPI → *Account* → *Publishing* → *Add a pending publisher*.
-   2. Owner = `aladinor`, repository = `radish`, workflow filename =
+   2. Owner = `mgrover1`, repository = `radish`, workflow filename =
       `release.yml`, environment = `pypi`.
    3. Save. After the first successful release, this becomes a
       "trusted publisher" — no API token required ever after.
 
 3. **Configure the GitHub environment** at
-   `https://github.com/aladinor/radish/settings/environments` →
+   `https://github.com/mgrover1/radish/settings/environments` →
    *New environment* → name `pypi`. (Required for the OIDC handshake.)
 
    *Alternative*: if you'd rather use an API token, generate one at

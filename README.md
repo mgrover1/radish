@@ -2,10 +2,10 @@
 
 High-performance weather radar data library — Rust core, Python bindings, and a WASM target for the browser.
 
-[![Rust CI](https://github.com/aladinor/radish/actions/workflows/rust-ci.yml/badge.svg)](https://github.com/aladinor/radish/actions/workflows/rust-ci.yml)
-[![Python CI](https://github.com/aladinor/radish/actions/workflows/python-ci.yml/badge.svg)](https://github.com/aladinor/radish/actions/workflows/python-ci.yml)
+[![Rust CI](https://github.com/mgrover1/radish/actions/workflows/rust-ci.yml/badge.svg)](https://github.com/mgrover1/radish/actions/workflows/rust-ci.yml)
+[![Python CI](https://github.com/mgrover1/radish/actions/workflows/python-ci.yml/badge.svg)](https://github.com/mgrover1/radish/actions/workflows/python-ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/radish-rs.svg)](https://pypi.org/project/radish-rs/)
-[![codecov](https://codecov.io/gh/aladinor/radish/branch/main/graph/badge.svg)](https://codecov.io/gh/aladinor/radish)
+[![codecov](https://codecov.io/gh/mgrover1/radish/branch/main/graph/badge.svg)](https://codecov.io/gh/mgrover1/radish)
 [![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
 
 Radish reads several weather radar formats straight into one normalized,

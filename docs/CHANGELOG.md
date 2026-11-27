@@ -81,6 +81,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Project home moved to `mgrover1/radish`.** Development, issues and
+  releases now live in the upstream repository instead of the
+  `aladinor/radish` fork. Repointed the PyPI project URLs
+  (`Homepage`/`Repository`/`Issues` in `python/pyproject.toml`), the
+  README CI and codecov badges, the `docs/` repo link, the
+  trusted-publisher instructions in `docs/RELEASING.md`, the version
+  compare links at the bottom of this file, and the link-checker
+  ignore pattern.
+- **Bumped `thiserror` from 1.0 to 2.0.** No source changes needed;
+  the rest of the dependency graph already used 2.x, so this drops the
+  duplicate `thiserror`/`thiserror-impl` 1.0.69 from `Cargo.lock`.
 - **Rewrote the top-level `README.md`.** It previously had no content
   beyond a one-line tagline and the system-dependency install steps.
   Rewritten from a fresh read of the actual current source tree (not
@@ -889,12 +900,12 @@ First public release on PyPI as
 - CfRadial2 native reader and ODIM H5 backend are planned for
   Phase 2 (see `docs/PROJECT_SUMMARY.md`).
 
-[Unreleased]: https://github.com/aladinor/radish/compare/v0.4.0...HEAD
-[0.4.0]: https://github.com/aladinor/radish/compare/v0.3.0...v0.4.0
-[0.3.0]: https://github.com/aladinor/radish/compare/v0.2.5...v0.3.0
-[0.2.5]: https://github.com/aladinor/radish/compare/v0.2.4...v0.2.5
-[0.2.4]: https://github.com/aladinor/radish/compare/v0.2.3...v0.2.4
-[0.2.3]: https://github.com/aladinor/radish/compare/v0.2.2...v0.2.3
-[0.2.2]: https://github.com/aladinor/radish/compare/v0.2.0...v0.2.2
-[0.2.0]: https://github.com/aladinor/radish/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/aladinor/radish/releases/tag/v0.1.0
+[Unreleased]: https://github.com/mgrover1/radish/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/mgrover1/radish/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/mgrover1/radish/compare/v0.2.5...v0.3.0
+[0.2.5]: https://github.com/mgrover1/radish/compare/v0.2.4...v0.2.5
+[0.2.4]: https://github.com/mgrover1/radish/compare/v0.2.3...v0.2.4
+[0.2.3]: https://github.com/mgrover1/radish/compare/v0.2.2...v0.2.3
+[0.2.2]: https://github.com/mgrover1/radish/compare/v0.2.0...v0.2.2
+[0.2.0]: https://github.com/mgrover1/radish/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/mgrover1/radish/releases/tag/v0.1.0
