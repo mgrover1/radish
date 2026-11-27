@@ -62,6 +62,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- **Refreshed `Cargo.lock` to clear new RustSec advisories that were
+  failing the `Security Audit` CI job.** Lockfile-only updates of
+  transitive dependencies: `quinn-proto` 0.11.16 → 0.11.19 and
+  `quinn-udp` 0.5.14 → 0.5.16 (RUSTSEC-2026-0338 through -0342, -0523,
+  -0524 and the `quinn-udp` receive-loop advisory), `rustls` 0.23.45 →
+  0.23.46 (RUSTSEC-2026-0346 through -0349), `rustls-webpki` 0.103.15 →
+  0.103.17 (RUSTSEC-2026-0382), `webpki-root-certs` 1.0.7 → 1.0.12
+  (RUSTSEC-2026-0383), `url` 2.5.8 → 2.5.9 (RUSTSEC-2026-0592) and
+  `libz-sys` 1.1.22 → 1.1.33 (RUSTSEC-2026-0418). `cargo audit` exits 0
+  again.
 - **`Security Audit` CI job failing on a real advisory.** `rustls`
   0.23.40 is pulled in only via `[dev-dependencies]` (the dev-only
   `nexrad` → `nexrad-data` → `reqwest` → `hyper-rustls`/`tokio-rustls`/
