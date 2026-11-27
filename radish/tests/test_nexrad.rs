@@ -199,8 +199,8 @@ fn scan_file_returns_metadata() {
 }
 
 /// HIGH-priority: pin the `scan_nexrad`-vs-`read_nexrad` agreement
-/// for the per-sweep arrays surfaced for the raw2zarr bulk-ingest
-/// path. Both code paths route through `volume_attrs`, so any future
+/// for the per-sweep arrays surfaced for downstream bulk-ingest
+/// paths. Both code paths route through `volume_attrs`, so any future
 /// refactor that decouples them must keep the surfaces identical.
 ///
 /// Also asserts the length invariant against

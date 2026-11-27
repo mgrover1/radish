@@ -302,8 +302,8 @@ mod tests {
         // Every pointer populated to its expected value (Build-12+
         // layout: pointers[0] = 72, then +1000 per slot).
         let modern_first_ptr = MODERN_HEADER_SIZE as u32;
-        for idx in 0..POINTER_COUNT {
-            assert_eq!(h.pointers[idx], modern_first_ptr + idx as u32 * 1000);
+        for (idx, ptr) in h.pointers.iter().enumerate().take(POINTER_COUNT) {
+            assert_eq!(*ptr, modern_first_ptr + idx as u32 * 1000);
         }
         assert_eq!(
             h.layout,

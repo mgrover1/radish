@@ -9,7 +9,7 @@ listed below.
 ## Default location
 
 `~/.cache/radish/fixtures/nexrad/` is the recommended location; the
-fixtures are reusable across radish, raw2zarr, and other downstream
+fixtures are reusable across radish and other downstream
 tools that decode NEXRAD Level 2.
 
 ```bash

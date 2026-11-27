@@ -309,8 +309,8 @@ fn pad_sweep_to_full_rotation(mut data: SweepData, sweep: &Sweep) -> SweepData {
 
     // Dense row → grid slot; first ray wins a contested slot.
     let mut row_for_slot: Vec<Option<usize>> = vec![None; n];
-    for k in 0..nrays {
-        let az = data.coordinates.azimuth[k].rem_euclid(360.0);
+    for (k, az) in data.coordinates.azimuth.iter().enumerate() {
+        let az = az.rem_euclid(360.0);
         let slot = ((az / res) as usize).min(n - 1);
         if row_for_slot[slot].is_none() {
             row_for_slot[slot] = Some(k);

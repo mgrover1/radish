@@ -25,15 +25,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
      0.12.x pins `hdf5-metno-sys = "^0.11.3"`; HDF5 2.x support only
      landed in `hdf5-metno-sys` 0.12.x, which pairs with `hdf5-metno`
      0.15.0. Bumped the workspace's `hdf5` dependency (`package =
-     "hdf5-metno"`) from `"0.12"` to `"0.15"` to pick it up. radish's
-     only use of the crate is the `hdf5::Error` conversion in
-     `error.rs`, so this is a `Cargo.lock`-only-shaped change with no
-     source changes needed; verified with `cargo build`/`test`/`clippy`
-     (460 tests pass) plus a runtime smoke test that creates, writes,
-     and reads back a real `.h5` file through the new version. Also
-     incidentally drops the unmaintained `paste` crate (replaced by
-     `pastey`), clearing one of the four pre-existing `cargo audit`
-     warnings.
+     "hdf5-metno"`) from `"0.12"` to `"0.15"` to pick it up. This is
+     more than a formality for radish's own unused `hdf5::Error`
+     conversion in `error.rs`: `netcdf-sys` — the FFI layer `netcdf`
+     (and therefore the CfRadial1 backend's real file reads) links
+     against — also depends directly on `hdf5-metno-sys` and declares
+     `links = "hdf5"`, so Cargo unifies the whole graph to one
+     `hdf5-metno-sys` version. `netcdf-sys` moved 0.9.0 → 0.9.2
+     (`hdf5-metno-sys` requirement `^0.11.1` → `^0.12.2`) to make that
+     unification possible, which means this bump is what lets
+     CfRadial1 actually read real HDF5-2.2.0-backed NetCDF files, not
+     just an error-type formality. No radish source changes needed
+     either way; verified with `cargo build`/`test`/`clippy` (460 tests
+     pass) plus a runtime smoke test that creates, writes, and reads
+     back a real `.h5` file through the new version. Also incidentally
+     drops the unmaintained `paste` crate (replaced by `pastey`),
+     clearing one of the four pre-existing `cargo audit` warnings.
 
   `README.md`, `CLAUDE.md`, and `docs/GETTING_STARTED.md` are updated
   to the `brew --prefix` form for #1 (previously hardcoded to
@@ -55,6 +62,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- **Refreshed `Cargo.lock` to clear new RustSec advisories that were
+  failing the `Security Audit` CI job.** Lockfile-only updates of
+  transitive dependencies: `quinn-proto` 0.11.16 → 0.11.19 and
+  `quinn-udp` 0.5.14 → 0.5.16 (RUSTSEC-2026-0338 through -0342, -0523,
+  -0524 and the `quinn-udp` receive-loop advisory), `rustls` 0.23.45 →
+  0.23.46 (RUSTSEC-2026-0346 through -0349), `rustls-webpki` 0.103.15 →
+  0.103.17 (RUSTSEC-2026-0382), `webpki-root-certs` 1.0.7 → 1.0.12
+  (RUSTSEC-2026-0383), `url` 2.5.8 → 2.5.9 (RUSTSEC-2026-0592) and
+  `libz-sys` 1.1.22 → 1.1.33 (RUSTSEC-2026-0418). `cargo audit` exits 0
+  again.
 - **`Security Audit` CI job failing on a real advisory.** `rustls`
   0.23.40 is pulled in only via `[dev-dependencies]` (the dev-only
   `nexrad` → `nexrad-data` → `reqwest` → `hyper-rustls`/`tokio-rustls`/
@@ -71,6 +88,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the workspace. `cargo audit` now exits 0 (3 pre-existing allowed
   warnings remain: `proc-macro-error2` unmaintained, `anyhow` unsound
   note, `chacha20` yanked — none of them fail the job).
+
+### Changed
+
+- **Project home moved to `mgrover1/radish`.** Development, issues and
+  releases now live in the upstream repository instead of the
+  `aladinor/radish` fork. Repointed the PyPI project URLs
+  (`Homepage`/`Repository`/`Issues` in `python/pyproject.toml`), the
+  README CI and codecov badges, the `docs/` repo link, the
+  trusted-publisher instructions in `docs/RELEASING.md`, the version
+  compare links at the bottom of this file, and the link-checker
+  ignore pattern.
+- **Bumped `thiserror` from 1.0 to 2.0.** No source changes needed;
+  the rest of the dependency graph already used 2.x, so this drops the
+  duplicate `thiserror`/`thiserror-impl` 1.0.69 from `Cargo.lock`.
+- **Rewrote the top-level `README.md`.** It previously had no content
+  beyond a one-line tagline and the system-dependency install steps.
+  Rewritten from a fresh read of the actual current source tree (not
+  the stale status sections in `CLAUDE.md`/`docs/PROJECT_SUMMARY.md`/
+  `docs/ARCHITECTURE.md`, which still describe NEXRAD Level 2/3 and
+  Sigmet/IRIS as "planned" despite having shipped): a supported-formats
+  table, Python/Rust install instructions, `xarray`-engine and
+  bytes-in/S3 quick-start examples drawn from real current API
+  (`radish.open_datatree`/`open_dataset`/`scan`), maintainer-measured
+  (not CI-verified) performance numbers with that caveat stated
+  explicitly, a one-paragraph architecture summary, a WASM/browser
+  section, and license badges/links. Also corrects the NEXRAD Level 3
+  backend's own stale doc comment claim of "19 of 26" message codes —
+  cross-checked against `decode::products::PRODUCTS` directly: all 26
+  codes have had concrete `DecodeScheme`s since plan 0012 (0.4.0), zero
+  `Unsupported` entries remain.
 
 ## [0.4.0] - 2026-08-11
 
@@ -376,8 +423,8 @@ The "browser-reachable NEXRAD Level 3 + region-based velocity dealiasing" releas
   builder, never adding the sweep's absolute `YMDS_TIME` start time;
   `read_ymds_time` also discarded the milliseconds field. Both are
   fixed, so the IRIS `time` axis now matches xradar's
-  `open_iris_datatree` to the millisecond. Reported via raw2zarr's
-  IRIS backend, which could not key its `vcp_time` axis on radish
+  `open_iris_datatree` to the millisecond. Reported by a downstream
+  IRIS consumer that could not key its `vcp_time` axis on radish
   until this was resolved. (#28)
 
 - **Sigmet/IRIS: power/phase moments were over-masked vs xradar** —
@@ -453,7 +500,7 @@ The "browser-reachable NEXRAD Level 3 + region-based velocity dealiasing" releas
 
 ## [0.2.5] - 2026-05-05
 
-The "every NEXRAD timestamp was +1 day" fix-only release. ICD 2620002R Table III §3.2.4.17 specifies the per-radial `modified_julian_date` field as 1-indexed days since 1970-01-01, but radish 0.2.2 through 0.2.4 computed `days * 86_400 + secs` (no `-1`), shifting every emitted timestamp by exactly +86,400,000 ms — every sweep, every ray, every file. xradar's `nexrad_level2.py:open_sweeps_as_dict` and danielway/nexrad's `volume/record.rs` both subtract 1; only radish disagreed. Filed by the raw2zarr maintainer, who currently mitigates with an in-process `-86400` shim that 0.2.5 lets them remove. (#26) Plus CI maintenance: GitHub Actions bumped to Node 24-compatible versions before the deprecation deadline (#25).
+The "every NEXRAD timestamp was +1 day" fix-only release. ICD 2620002R Table III §3.2.4.17 specifies the per-radial `modified_julian_date` field as 1-indexed days since 1970-01-01, but radish 0.2.2 through 0.2.4 computed `days * 86_400 + secs` (no `-1`), shifting every emitted timestamp by exactly +86,400,000 ms — every sweep, every ray, every file. xradar's `nexrad_level2.py:open_sweeps_as_dict` and danielway/nexrad's `volume/record.rs` both subtract 1; only radish disagreed. Filed by a downstream user, who currently mitigates with an in-process `-86400` shim that 0.2.5 lets them remove. (#26) Plus CI maintenance: GitHub Actions bumped to Node 24-compatible versions before the deprecation deadline (#25).
 
 ### Fixed
 
@@ -497,9 +544,8 @@ The "every NEXRAD timestamp was +1 day" fix-only release. ICD 2620002R Table III
   three unit tests pinning the day-1 boundary + the KLOT
   filename-truth fixture value, plus tightened integration tests
   on the KLOT 2025-12-10 + KVNX 2011 fixtures asserting the
-  decoded date matches the filename-encoded one. Filed by the
-  raw2zarr maintainer at
-  `https://github.com/aladinor/raw2zarr` — they currently
+  decoded date matches the filename-encoded one. Filed by a
+  downstream user — they currently
   mitigate with an in-process `-86400` shim that this fix lets
   them remove. Thanks to the filer for the precise reproducer
   + cross-implementation comparison against xradar and
@@ -523,7 +569,7 @@ The "metadata-fast-path on bytes / streams" release. Closes the input-shape asym
   fsspec's `compression="gzip"` filter, `gzip.decompress(raw)`, or
   obstore registered as an fsspec backend
   (`from obstore.fsspec import register`). Closes the
-  fail-fallback-to-xradar pattern in raw2zarr v0.18.0 PR #244 — the
+  fail-fallback-to-xradar pattern downstream consumers needed — the
   ~10× metadata-extraction speedup is now reachable on S3 input
   through a single `fsspec.open(uri, 'rb').read() →
   radish.scan(blob)` hop.
@@ -863,12 +909,12 @@ First public release on PyPI as
 - CfRadial2 native reader and ODIM H5 backend are planned for
   Phase 2 (see `docs/PROJECT_SUMMARY.md`).
 
-[Unreleased]: https://github.com/aladinor/radish/compare/v0.4.0...HEAD
-[0.4.0]: https://github.com/aladinor/radish/compare/v0.3.0...v0.4.0
-[0.3.0]: https://github.com/aladinor/radish/compare/v0.2.5...v0.3.0
-[0.2.5]: https://github.com/aladinor/radish/compare/v0.2.4...v0.2.5
-[0.2.4]: https://github.com/aladinor/radish/compare/v0.2.3...v0.2.4
-[0.2.3]: https://github.com/aladinor/radish/compare/v0.2.2...v0.2.3
-[0.2.2]: https://github.com/aladinor/radish/compare/v0.2.0...v0.2.2
-[0.2.0]: https://github.com/aladinor/radish/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/aladinor/radish/releases/tag/v0.1.0
+[Unreleased]: https://github.com/mgrover1/radish/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/mgrover1/radish/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/mgrover1/radish/compare/v0.2.5...v0.3.0
+[0.2.5]: https://github.com/mgrover1/radish/compare/v0.2.4...v0.2.5
+[0.2.4]: https://github.com/mgrover1/radish/compare/v0.2.3...v0.2.4
+[0.2.3]: https://github.com/mgrover1/radish/compare/v0.2.2...v0.2.3
+[0.2.2]: https://github.com/mgrover1/radish/compare/v0.2.0...v0.2.2
+[0.2.0]: https://github.com/mgrover1/radish/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/mgrover1/radish/releases/tag/v0.1.0

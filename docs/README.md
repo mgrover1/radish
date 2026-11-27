@@ -1,6 +1,6 @@
 # Radish documentation
 
-Long-form documentation for the [`radish`](https://github.com/aladinor/radish)
+Long-form documentation for the [`radish`](https://github.com/mgrover1/radish)
 weather-radar library. The repo-root `README.md` is the entry point;
 this folder is for content that's too detailed to fit there.
 

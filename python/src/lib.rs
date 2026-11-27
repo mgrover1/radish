@@ -216,8 +216,7 @@ impl PyVolumeMetadata {
 ///
 /// `eq` derives `__eq__` from the underlying Rust `PartialEq` so users can
 /// `radish.scan(path).nexrad_attrs == radish.scan(bytes).nexrad_attrs` —
-/// useful for the parity checks bulk-ingest workflows do per file (e.g.
-/// raw2zarr#244's chain-equivalence test).
+/// useful for the parity checks bulk-ingest workflows do per file.
 #[pyclass(name = "NexradVolumeAttrs", eq, from_py_object)]
 #[derive(Clone, PartialEq)]
 pub struct PyNexradVolumeAttrs {

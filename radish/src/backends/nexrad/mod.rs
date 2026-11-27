@@ -402,8 +402,8 @@ mod tests {
     /// Bytes-input metadata fast path: full bytes buffer through
     /// `scan_bytes_volume` must produce metadata identical to the
     /// path-based `scan_file` (modulo the internal source-path
-    /// placeholder). The acceptance criterion the downstream chain
-    /// (raw2zarr#244) needs to drop the xradar fallback.
+    /// placeholder). The acceptance criterion a downstream chain
+    /// needs to drop the xradar fallback.
     #[test]
     fn scan_bytes_volume_round_trips_match_scan_file() {
         let path = match std::env::var("RADISH_NEXRAD_FIXTURE") {
@@ -419,7 +419,7 @@ mod tests {
         assert_eq!(from_path.instrument_name, from_bytes.instrument_name);
         assert_eq!(from_path.sweep_fixed_angles, from_bytes.sweep_fixed_angles);
         // MSG_2 / MSG_5 attrs must match bit-identically — this is the
-        // surface raw2zarr#244 inspects per file.
+        // surface a downstream chain inspects per file.
         assert_eq!(from_path.nexrad, from_bytes.nexrad);
     }
 
